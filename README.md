@@ -31,10 +31,6 @@ This repository contains the projects developed as part of the **42 Network (Com
 | **Circle 01** | [**ft_printf**](./Circle-01/ft_printf) | Custom implementation of `printf` with variadic arguments (`%c`, `%s`, `%p`, `%d`, `%i`, `%u`, `%x`, `%X`, `%%`) | `Completed` | `C` |
 | **Circle 01** | [**get_next_line**](./Circle-01/get_next_line) | Efficient function reading a single line ending with newline from a file descriptor using static buffer | `Completed` | `C` |
 | **Circle 01** | [**push_swap**](./Circle-01/push_swap) | Optimized sorting algorithm sorting stack data using two stacks and a restricted set of instructions | `Completed` | `C` |
-| **Circle 02** | *pipex / fract-ol* | UNIX pipeline simulation or fractal graphics engine (MiniLibX) | `Upcoming` | `C` |
-| **Circle 02** | *so_long / minitalk* | 2D game development (MiniLibX) or UNIX signal communication | `Upcoming` | `C` |
-| **Circle 03** | *minishell* | Minimal UNIX command-line shell with pipes, redirects, and built-ins | `Upcoming` | `C` |
-| **Circle 03** | *philosophers* | Concurrency, POSIX threads, mutexes, and the Dining Philosophers synchronization problem | `Upcoming` | `C` |
 
 ---
 
@@ -71,9 +67,3 @@ cd ../../Circle-01/get_next_line
 # Build push_swap
 cd ../../Circle-01/push_swap && make
 ```
-
----
-
-<div align="center">
-  <sub>Developed with ❤️ by <a href="https://github.com/SS2Genji">@SS2Genji</a></sub>
-</div>
