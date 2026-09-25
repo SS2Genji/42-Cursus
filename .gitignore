@@ -1,0 +1,39 @@
+# Prerequisites & Compilations
+*.d
+*.o
+*.ko
+*.obj
+*.elf
+*.ilk
+*.map
+*.exp
+*.gch
+*.pch
+
+# Libraries & Binaries
+*.a
+*.la
+*.lai
+*.so
+*.so.*
+*.dylib
+*.out
+*.app
+push_swap
+checker
+
+# Debug & Testing artifacts
+*.dSYM/
+*.su
+*.idb
+*.pdb
+gmon.out
+
+# Editor & System files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
