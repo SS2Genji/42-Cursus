@@ -30,8 +30,9 @@ This repository contains the projects developed as part of the **42 Network (Com
 | **Circle 00** | [**Libft**](./Circle-00/Libft) | Re-implementation of essential standard C library functions & linked list utilities | `Completed` | `C` |
 | **Circle 01** | [**ft_printf**](./Circle-01/ft_printf) | Custom implementation of `printf` with variadic arguments (`%c`, `%s`, `%p`, `%d`, `%i`, `%u`, `%x`, `%X`, `%%`) | `Completed` | `C` |
 | **Circle 01** | [**get_next_line**](./Circle-01/get_next_line) | Efficient function reading a single line ending with newline from a file descriptor using static buffer | `Completed` | `C` |
-| **Circle 02** | [**push_swap**](./Circle-02/push_swap) | Optimized sorting algorithm sorting stack data using two stacks and a restricted set of instructions | `Completed` | `C` |
-| **Circle 02** | *pipex / fract-ol* | UNIX pipeline simulation or fractal graphics engine (MiniLibX) | `In Progress` | `C` |
+| **Circle 01** | [**push_swap**](./Circle-01/push_swap) | Optimized sorting algorithm sorting stack data using two stacks and a restricted set of instructions | `Completed` | `C` |
+| **Circle 02** | *pipex / fract-ol* | UNIX pipeline simulation or fractal graphics engine (MiniLibX) | `Upcoming` | `C` |
+| **Circle 02** | *so_long / minitalk* | 2D game development (MiniLibX) or UNIX signal communication | `Upcoming` | `C` |
 | **Circle 03** | *minishell* | Minimal UNIX command-line shell with pipes, redirects, and built-ins | `Upcoming` | `C` |
 | **Circle 03** | *philosophers* | Concurrency, POSIX threads, mutexes, and the Dining Philosophers synchronization problem | `Upcoming` | `C` |
 
@@ -64,8 +65,11 @@ cd Circle-00/Libft && make
 # Build ft_printf
 cd ../../Circle-01/ft_printf && make
 
+# Build get_next_line (header and utility functions)
+cd ../../Circle-01/get_next_line
+
 # Build push_swap
-cd ../../Circle-02/push_swap && make
+cd ../../Circle-01/push_swap && make
 ```
 
 ---
