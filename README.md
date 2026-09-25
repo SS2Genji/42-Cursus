@@ -1,5 +1,3 @@
-*This project has been created as part of the 42 curriculum by ahsimsek.*
-
 # 42 Cursus - Common Core
 
 Collection of my 42 School Common Core projects, algorithms, and system programming implementations.
