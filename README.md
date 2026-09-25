@@ -1,19 +1,8 @@
-<div align="center">
+*This project has been created as part of the 42 curriculum by ahsimsek.*
 
-#  Ecole 42 - Common Core Cursus
+# 42 Cursus - Common Core
 
-<p align="center">
-  <img src="https://img.shields.io/badge/42-School-000000?style=for-the-badge&logo=42&logoColor=white" alt="42" />
-  <img src="https://img.shields.io/badge/Language-C-00599C?style=for-the-badge&logo=c&logoColor=white" alt="C" />
-  <img src="https://img.shields.io/badge/Norminette-v3%20Passing-brightgreen?style=for-the-badge" alt="Norminette" />
-  <img src="https://img.shields.io/badge/OS-Linux%20%2F%20Arch-1793D1?style=for-the-badge&logo=arch-linux&logoColor=white" alt="Linux" />
-</p>
-
-<p align="center">
-  Collection of my 42 School Common Core projects, algorithms, and system programming implementations.
-</p>
-
-</div>
+Collection of my 42 School Common Core projects, algorithms, and system programming implementations.
 
 ---
 
