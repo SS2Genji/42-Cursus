@@ -17,13 +17,13 @@
 
 ---
 
-## 📌 Overview
+## Overview
 
 This repository contains the projects developed as part of the **42 Network (Common Core)** curriculum. All projects are implemented in **C**, adhering strictly to the **42 Norm** (Norminette: 25 lines max per function, 5 functions max per file, strict variable declarations, zero memory leaks, and forbidden standard library functions).
 
 ---
 
-## 🧭 Cursus Roadmap & Projects
+## Cursus Roadmap & Projects
 
 | Circle | Project | Description | Status | Language |
 | :---: | :--- | :--- | :---: | :---: |
@@ -34,7 +34,7 @@ This repository contains the projects developed as part of the **42 Network (Com
 
 ---
 
-## 🛠️ Norminette & Coding Standards
+## Norminette & Coding Standards
 
 All C source code in this repository strictly adheres to **42 Norminette** guidelines:
 * Max **25 lines** per function.
@@ -46,7 +46,7 @@ All C source code in this repository strictly adheres to **42 Norminette** guide
 
 ---
 
-## 🚀 Building & Usage
+## Building & Usage
 
 Each project contains its own self-contained `Makefile` with standard 42 rules (`all`, `clean`, `fclean`, `re`).
 
