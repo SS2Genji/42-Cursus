@@ -1,6 +1,0 @@
-*.o
-*.a
-push_swap
-.vscode/
-compile_commands.json
-*.zip
