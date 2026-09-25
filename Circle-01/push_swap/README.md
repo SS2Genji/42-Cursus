@@ -186,8 +186,8 @@ Designed specifically for small inputs where asymptotic behavior does not matter
 #### Size 4 and 5 (`sort_five`):
 - Locates the minimum node in Stack A using `find_min_node(*a)`.
 - Calculates shortest rotation path using node position:
-  - If $\text{pos} \le \frac{\text{size}}{2}$, rotates upward via `ra`.
-  - If $\text{pos} > \frac{\text{size}}{2}$, rotates downward via `rra`.
+  - If `pos <= size / 2`, rotates upward via `ra`.
+  - If `pos > size / 2`, rotates downward via `rra`.
 - Pushes the minimum to Stack B (`pb`).
 - Repeated until exactly 3 elements remain in Stack A.
 - Executes `sort_three()` on the remaining 3 elements.
@@ -217,12 +217,12 @@ Designed specifically for small inputs where asymptotic behavior does not matter
   *(For $N = 100$, chunk size is $\sim 14$ elements).*
 
 #### Phase A: Butterfly Push to Stack B (`push_chunks_to_b`)
-Maintains a moving index window $[pushed, pushed + chunk]$:
-1. If top element's index satisfies $\text{index} \le pushed$:
+Maintains a moving index window `[pushed, pushed + chunk]`:
+1. If top element's index satisfies `index <= pushed`:
    - Pushes to Stack B (`pb`).
    - Immediately rotates Stack B (`rb`).
    - *Effect:* Smaller elements sink to the **bottom** of Stack B.
-2. Else if top element's index satisfies $\text{index} \le pushed + chunk$:
+2. Else if top element's index satisfies `index <= pushed + chunk`:
    - Pushes to Stack B (`pb`) without rotation.
    - *Effect:* Intermediate elements remain at the **top** of Stack B.
 3. Else:
@@ -234,8 +234,8 @@ Maintains a moving index window $[pushed, pushed + chunk]$:
 #### Phase B: Greedy Maximum Retrieval (`push_back_to_a`)
 - Continuously locates `find_max_node(*b)` in Stack B.
 - Rotates Stack B via the shortest path:
-  - If $\text{pos} \le \frac{\text{size}}{2} \implies$ `rb`
-  - If $\text{pos} > \frac{\text{size}}{2} \implies$ `rrb`
+  - If `pos <= size / 2` $\implies$ `rb`
+  - If `pos > size / 2` $\implies$ `rrb`
 - Pushes the maximum back to Stack A (`pa`).
 - Due to the butterfly distribution, maximum elements are always located at or near the extremes of Stack B, requiring minimal rotation overhead.
 
@@ -246,7 +246,7 @@ Maintains a moving index window $[pushed, pushed + chunk]$:
 - **Complexity:** $\mathcal{O}(k \cdot N) = \mathcal{O}(N \log_2 N)$ time complexity, where $k = \lceil \log_2 N \rceil$.
 - **Mechanism:**
   - Operates on the indexed representations $[0, N - 1]$.
-  - Determines the maximum bit count $k = \text{get\_max\_bits}(N - 1)$.
+  - Determines the maximum bit count $k = \lceil \log_2 N \rceil$ using `get_max_bits(N - 1)`.
   - For each bit position $i \in [0, k - 1]$:
     1. Iterates over all $N$ elements in Stack A:
        - Inspects the $i$-th bit of the top element: `(index >> i) & 1`.
