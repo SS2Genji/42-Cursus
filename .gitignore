@@ -19,8 +19,8 @@
 *.dylib
 *.out
 *.app
-push_swap
-checker
+/Circle-02/push_swap/push_swap
+/Circle-02/push_swap/checker
 
 # Debug & Testing artifacts
 *.dSYM/
