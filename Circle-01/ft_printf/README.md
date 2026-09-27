@@ -3,98 +3,192 @@
 # ft_printf
 
 ## Description
-The **ft_printf** project is a custom implementation of the standard C library function `printf()` from `libc`. The main objective is to understand the mechanics of variadic functions in C (`<stdarg.h>`) and recreate a robust formatted output printing library without relying on the buffer management of the original `printf`.
+ft_printf is an algorithm and systems project in the 42 curriculum designed to recreate the formatted output conversion engine of the standard C library function `printf(3)`.
 
-The library compiles into `libftprintf.a` and supports the following mandatory conversion specifiers:
-
-| Specifier | Description |
-| :---: | :--- |
-| `%c` | Prints a single character. |
-| `%s` | Prints a string of characters (or `(null)` if pointer is `NULL`). |
-| `%p` | Prints a `void *` pointer argument in hexadecimal format with `0x` prefix (or `(nil)` on Linux if `NULL`). |
-| `%d` | Prints a signed decimal (base 10) integer. |
-| `%i` | Prints a signed integer in base 10. |
-| `%u` | Prints an unsigned decimal (base 10) number. |
-| `%x` | Prints a hexadecimal (base 16) number using lowercase letters (`0123456789abcdef`). |
-| `%X` | Prints a hexadecimal (base 16) number using uppercase letters (`0123456789ABCDEF`). |
-| `%%` | Prints a literal percent sign. |
-
-The function returns the total number of characters printed to standard output (`stdout`), or a negative value if an output error occurs.
+The project requires parsing a format control string and processing a dynamic sequence of heterogeneous arguments using C variadic argument primitives (`<stdarg.h>`). The resulting library (`libftprintf.a`) replicates standard specifier conversions, handles numeric base representations, resolves boundary conditions such as two's complement integer extremes, and tracks total byte output without dynamic memory allocations or buffered streaming.
 
 ---
 
 ## Instructions
 
 ### Compilation
-The project uses a standard `Makefile` with `-Wall -Wextra -Werror` flags. To build the static library:
+The library is compiled using a standard Makefile with required compiler flags (`-Wall -Wextra -Werror`). To build `libftprintf.a`:
 
 ```bash
 make
 ```
 
-This generates `libftprintf.a` at the root of the repository using the `ar` command (`ar rcs`).
+The Makefile compiles each `.c` source file into an object file (`.o`) and archives them into the static library `libftprintf.a` using `ar rcs`.
 
-Other available rules:
-- `make clean`: Removes object files (`.o`).
-- `make fclean`: Removes object files and the generated library `libftprintf.a`.
-- `make re`: Rebuilds the entire library from scratch.
+Available Makefile rules:
+- `make all`: Builds the static library `libftprintf.a`.
+- `make clean`: Removes intermediate object files (`.o`).
+- `make fclean`: Removes object files and the `libftprintf.a` binary.
+- `make re`: Recompiles the library from scratch.
 
 ### Usage in a C Project
-Include the header file `ft_printf.h` in your source code and link against `libftprintf.a`:
+Include `ft_printf.h` in your source code and link against `libftprintf.a`:
 
 ```c
 #include "ft_printf.h"
 
 int	main(void)
 {
-	int	count;
+	int		printed;
+	char	*user;
 
-	count = ft_printf("Hello, %s! Number: %d, Hex: %x, Pointer: %p\n",
-			"42", 42, 255, &count);
-	ft_printf("Total printed: %d characters\n", count);
+	user = "ahsimsek";
+	printed = ft_printf("User: %s | Score: %d | Hex: %x | Pointer: %p\n",
+			user, 42, 255, user);
+	ft_printf("Total characters written: %d\n", printed);
 	return (0);
 }
 ```
 
 Compile with:
+
 ```bash
-cc -Wall -Wextra -Werror main.c libftprintf.a -o program
-./program
+cc -Wall -Wextra -Werror main.c libftprintf.a -o test_printf
+./test_printf
 ```
+
+---
+
+## Conversion Specifiers
+
+The implementation supports the following conversion specifiers matching standard `printf` behavior:
+
+| Specifier | Argument Type | Output Format | Edge Case Behavior |
+| :---: | :--- | :--- | :--- |
+| `%c` | `int` (promoted) | Single ASCII character. | Handles null byte (`\0`). |
+| `%s` | `char *` | Null-terminated string. | Outputs `(null)` if pointer is `NULL`. |
+| `%p` | `void *` | Hexadecimal address with `0x` prefix. | Outputs `(nil)` on Linux if pointer is `NULL`. |
+| `%d` | `int` | Signed base-10 decimal integer. | Handles `-2147483648` (`INT_MIN`). |
+| `%i` | `int` | Signed base-10 integer. | Identical to `%d`. |
+| `%u` | `unsigned int` | Unsigned base-10 integer. | Values from `0` to `4294967295`. |
+| `%x` | `unsigned int` | Lowercase base-16 hexadecimal (`0123456789abcdef`). | Zero outputs `0`. |
+| `%X` | `unsigned int` | Uppercase base-16 hexadecimal (`0123456789ABCDEF`). | Zero outputs `0`. |
+| `%%` | None | Literal `%` character. | Consumes no variable argument. |
+
+Return value: Returns the total number of characters written to standard output (`stdout`), or `-1` if the format string pointer is `NULL` or an output write error occurs.
 
 ---
 
 ## Algorithm and Data Structure
 
-### 1. Data Structure: Variadic Arguments (`va_list`)
-In standard C, functions with a variable number of arguments rely on the `<stdarg.h>` macro definitions:
-- `va_list`: A type representing the current argument pointer on the call stack.
-- `va_start(args, format)`: Initializes the `va_list` pointer to the first optional argument following the named parameter `format`.
-- `va_arg(args, type)`: Retrieves the next argument from the stack, casting it to the specified `type` and advancing the pointer.
-- `va_end(args)`: Cleans up the `va_list` state.
+### 1. Variadic Arguments on the System V AMD64 ABI
 
-Because the arguments passed to `ft_printf` are pushed onto the stack according to the ABI calling convention, `va_list` is the standard, zero-overhead mechanism to iterate through parameters of heterogeneous types (`int`, `char *`, `void *`, `unsigned int`).
+In standard C, variadic functions accept an arbitrary number of parameters following fixed positional arguments. The mechanics are coordinated via `<stdarg.h>`:
 
-### 2. Algorithm & Dispatch Strategy
-The algorithm processes the format string in a linear, single-pass scan:
-1. **Scanning:** A loop iterates over `format[i]` until the null terminator (`\0`) is reached.
-2. **Literal Characters:** Normal characters are directly written to `stdout` (`write(1, &format[i], 1)`), and the printed character counter is incremented.
-3. **Specifier Interception:** When a `%` character is detected:
-   - The scanner checks the following character `format[i + 1]`.
-   - A dispatcher function matches the conversion character (`c`, `s`, `p`, `d`, `i`, `u`, `x`, `X`, `%`) and calls the corresponding helper function (`ft_putchar`, `ft_putstr`, `ft_putnbr`, `ft_putunsigned`, `ft_puthex`, `ft_putptr`).
-   - The helper function fetches the corresponding argument via `va_arg` and prints it using recursive base conversion or direct writing, returning the count of printed characters.
-4. **Counter Accumulation:** The return value accumulates every successfully written byte. If any write operation fails, error tracking propagates upwards.
-5. **Clean Exit:** Once parsing completes, `va_end` is invoked, and the total character count is returned.
+- `va_list`: An opaque cursor type pointing to argument data.
+- `va_start(args, format)`: Initializes the cursor immediately past the named argument `format`.
+- `va_arg(args, type)`: Fetches the value at the current position, casts it to `type`, and advances the cursor based on ABI alignment rules.
+- `va_end(args)`: Invalidates the cursor and cleans up stack resources.
+
+Under the System V AMD64 ABI (x86_64 Linux), the first 6 integer or pointer arguments are passed via general-purpose registers (`%rdi`, `%rsi`, `%rdx`, `%rcx`, `%r8`, `%r9`). Variadic arguments are spilled into a contiguous register save area on the stack frame. `va_arg` retrieves data directly from this structure, maintaining type correctness and memory alignment.
+
+```mermaid
+graph TD
+    Caller["Caller pushes arguments"] --> RegSave["Register Save Area / Stack Frame"]
+    RegSave --> VaStart["va_start(args, format)"]
+    VaStart --> ParseLoop["Scan format string"]
+    ParseLoop --> Specifier{"Encounter '%'"}
+    Specifier -->|"No"| DirectWrite["write(1, &c, 1)"]
+    Specifier -->|"Yes"| Dispatch["ft_formats(args, specifier)"]
+    Dispatch --> VaArg["va_arg(args, Type)"]
+    VaArg --> Convert["Base conversion & write"]
+    Convert --> Accumulate["Accumulate return length"]
+    DirectWrite --> Accumulate
+    Accumulate --> NextChar["Advance format cursor"]
+    NextChar --> ParseLoop
+    ParseLoop --> Done["va_end(args) -> return total_len"]
+```
+
+---
+
+### 2. Base Conversion Mathematics
+
+Number printing requires converting binary integer values into textual representations across arbitrary radices (base 10 and base 16).
+
+#### Base-10 Decimal Conversion
+For a positive integer $X$, the decimal digits are computed via successive Euclidean divisions by 10:
+
+$$X = 10 \cdot q + r \quad \text{where} \quad r = X \pmod{10}, \quad 0 \le r < 10$$
+
+Because Euclidean division produces digits from least significant to most significant (right-to-left), recursion is used to unwind the stack in natural left-to-right printing order:
+
+```c
+int	ft_putunsigned(unsigned int n)
+{
+	int	len;
+
+	len = 0;
+	if (n >= 10)
+		len += ft_putunsigned(n / 10);
+	len += ft_putchar((n % 10) + '0');
+	return (len);
+}
+```
+
+The recursion depth is bounded by $\lceil \log_{10}(2^{32}) \rceil = 10$ frames, ensuring minimal stack usage.
+
+#### Two's Complement Extremes (`INT_MIN`)
+Signed 32-bit integers use two's complement representation:
+
+$$[-2^{31}, 2^{31} - 1] = [-2147483648, 2147483647]$$
+
+The negative range contains one more value than the positive range. Attempting to negate $-2147483648$ (`n = -n`) causes signed integer overflow, resulting in undefined behavior in C.
+
+`ft_printf` resolves this boundary condition with an explicit guard:
+
+```c
+if (n == -2147483648)
+{
+	write(1, "-2147483648", 11);
+	return (11);
+}
+```
+
+#### Base-16 Hexadecimal and Pointer Encoding
+For an unsigned integer or pointer address $P$, conversion uses radix 16:
+
+$$P = 16 \cdot q + r \quad \text{where} \quad r = P \pmod{16}, \quad 0 \le r < 16$$
+
+The remainder $r$ maps directly to a character lookup table:
+- Lowercase (`%x`): `"0123456789abcdef"[r]`
+- Uppercase (`%X`): `"0123456789ABCDEF"[r]`
+
+For `%p`, the argument is received as `void *`, cast to `unsigned long` to guarantee 64-bit width preservation on 64-bit architectures, prepended with `"0x"`, and printed via `ft_puthex_ptr`. If the pointer is `NULL`, the function outputs `(nil)`.
+
+---
+
+### 3. Complexity Analysis
+
+| Operation | Time Complexity | Auxiliary Space Complexity | Recursion Depth |
+| :--- | :---: | :---: | :---: |
+| **Literal Text Parsing** | $\mathcal{O}(L)$ | $\mathcal{O}(1)$ | 0 |
+| **Character (`%c`)** | $\mathcal{O}(1)$ | $\mathcal{O}(1)$ | 0 |
+| **String (`%s`)** | $\mathcal{O}(K)$ | $\mathcal{O}(1)$ | 0 |
+| **Signed Integer (`%d`, `%i`)** | $\mathcal{O}(\log_{10} N)$ | $\mathcal{O}(1)$ | $\le 10$ frames |
+| **Unsigned Integer (`%u`)** | $\mathcal{O}(\log_{10} N)$ | $\mathcal{O}(1)$ | $\le 10$ frames |
+| **Hexadecimal (`%x`, `%X`)** | $\mathcal{O}(\log_{16} N)$ | $\mathcal{O}(1)$ | $\le 8$ frames |
+| **Pointer (`%p`)** | $\mathcal{O}(\log_{16} P)$ | $\mathcal{O}(1)$ | $\le 16$ frames |
+
+Here, $L$ represents format string length, $K$ represents string argument length, $N$ represents a 32-bit integer magnitude, and $P$ represents a 64-bit memory address. The auxiliary space complexity is strictly $\mathcal{O}(1)$ because no dynamic heap allocations (`malloc`) are performed.
 
 ---
 
 ## Resources
 
 ### Classic References
-- **`printf(3)`**: Linux Programmer's Manual (`man 3 printf`).
-- **`stdarg(3)`**: Variable argument lists documentation (`man 3 stdarg`).
+- **Stevens, W. Richard, and Stephen A. Rago.** *Advanced Programming in the UNIX Environment* (3rd Edition). Addison-Wesley, 2013. Chapter 3: File I/O.
+- **System V Application Binary Interface:** AMD64 Architecture Processor Supplement (Draft Version 0.99.6).
+- **Linux Programmer's Manual:** `man 3 printf`, `man 3 stdarg`.
 
 ### AI Usage
-- **Conceptual Clarification:** AI tools were consulted during early research to understand variadic stack frame mechanisms and clarify standard libc edge-case behaviors (such as `(nil)` representation on Linux).
-- **Code & Implementation:** All source code, conversion helpers, parsing logic, and Makefile configurations were independently implemented, structured, and validated by the student to guarantee strict 42 Norminette compliance and zero memory leaks.
-- **This README was written with the assistance of AI.**
+- **ABI Clarification:** AI tools were used during research to verify register allocation behavior for variadic argument frames under System V AMD64 specifications.
+- **Implementation & Validation:** Parsing logic, base conversion recursions, format dispatchers, and Makefile configurations were independently implemented by the author, and validated using external testing suites (`printfTester`, `ft_printf_tester`) with zero leaks and full Norminette compliance.
+
+---
+
+*This README was written with the assistance of AI.*

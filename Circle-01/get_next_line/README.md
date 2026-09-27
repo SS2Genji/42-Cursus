@@ -3,25 +3,21 @@
 # get_next_line
 
 ## Description
-The **get_next_line** project is a fundamental systems programming assignment in the 42 curriculum. The objective is to implement a function in C that reads a text file line by line from a file descriptor (`fd`), returning one line per call until reaching the end of the file (EOF).
+get_next_line is a core systems programming project in the 42 curriculum. The goal is to implement a robust, leak-free C function that reads and returns an individual line from a given file descriptor (`fd`) on each invocation until the end of the file (EOF) is reached.
 
-The prototype of the function is:
+The function prototype is:
 ```c
 char	*get_next_line(int fd);
 ```
 
-### Key Behaviors:
-- Each call to `get_next_line()` returns the next line from the file associated with `fd`, ending with a newline character (`\n`) unless EOF is reached on a line without a trailing newline.
-- When there is nothing left to read or if an error occurs (such as an invalid file descriptor), the function returns `NULL`.
-- The buffer size used for `read()` system calls is dynamically configured at compile time via the `-D BUFFER_SIZE=n` flag.
-- The function works seamlessly both on regular files and standard input (`stdin`, `fd = 0`).
+Each returned line includes the terminating newline character (`\n`) if one was encountered prior to EOF. When reading completes or when an error occurs (such as an invalid file descriptor or allocation failure), the function returns `NULL`. The read buffer size is decoupled from source code and injected at compilation time via the `-D BUFFER_SIZE=n` preprocessor directive, accommodating arbitrary buffer lengths from 1 byte to several megabytes.
 
 ---
 
 ## Instructions
 
 ### Compilation
-The project is designed to be compiled directly with your source files or tests. You can specify any positive integer for `BUFFER_SIZE`:
+Compile `get_next_line` alongside your source files with mandatory compiler flags (`-Wall -Wextra -Werror`) and specify `BUFFER_SIZE`:
 
 ```bash
 cc -Wall -Wextra -Werror -D BUFFER_SIZE=42 get_next_line.c get_next_line_utils.c main.c -o gnl
@@ -29,7 +25,9 @@ cc -Wall -Wextra -Werror -D BUFFER_SIZE=42 get_next_line.c get_next_line_utils.c
 
 If no `BUFFER_SIZE` flag is passed, `get_next_line.h` provides a default fallback of `42`.
 
-### Example Usage
+### Usage in a C Project
+Include `get_next_line.h` and read from any valid file descriptor in a sequential loop:
+
 ```c
 #include "get_next_line.h"
 #include <fcntl.h>
@@ -40,62 +38,132 @@ int	main(void)
 	int		fd;
 	char	*line;
 
-	fd = open("example.txt", O_RDONLY);
+	fd = open("sample.txt", O_RDONLY);
 	if (fd < 0)
 		return (1);
-	while ((line = get_next_line(fd)) != NULL)
+	line = get_next_line(fd);
+	while (line != NULL)
 	{
 		printf("%s", line);
 		free(line);
+		line = get_next_line(fd);
 	}
 	close(fd);
 	return (0);
 }
 ```
 
-### Bonus Compilation (Multiple File Descriptors)
-The bonus part manages multiple file descriptors simultaneously using a single static pointer array (`static char *mem_char[OPEN_MAX]`):
+Compile and run:
+```bash
+cc -Wall -Wextra -Werror -D BUFFER_SIZE=32 main.c get_next_line.c get_next_line_utils.c -o test_gnl
+./test_gnl
+```
+
+### Multiple File Descriptors (Bonus)
+The bonus implementation supports reading concurrently from multiple open file descriptors without losing the reading context of any stream. It indexes persistent buffer pointers inside a static array sized to the system limit (`OPEN_MAX`):
 
 ```bash
-cc -Wall -Wextra -Werror -D BUFFER_SIZE=42 get_next_line_bonus.c get_next_line_utils_bonus.c main_bonus.c -o gnl_bonus
+cc -Wall -Wextra -Werror -D BUFFER_SIZE=64 get_next_line_bonus.c get_next_line_utils_bonus.c main_bonus.c -o test_bonus
 ```
 
 ---
 
 ## Algorithm and Data Structure
 
-### 1. Data Structure: Static Pointer (`static char *mem_char`)
-The fundamental challenge of reading line-by-line using fixed-size blocks (`BUFFER_SIZE`) is that the `read()` syscall does not stop at newline boundaries. A single read may swallow:
-- Multiple newlines,
-- A newline followed by characters belonging to the next line.
+### 1. Persistent State in the BSS/Data Segment
 
-Because standard local variables on the call stack are deallocated when `get_next_line()` returns, a **static local variable** stored in the **BSS/Data Segment** is used. Its lifetime persists for the entire execution of the process, allowing leftover bytes from previous reads to be preserved across subsequent function calls.
+Because file input is consumed in chunks of `BUFFER_SIZE` bytes, a single `read(2)` call often ingests characters that extend beyond the next newline delimiter (`\n`). In standard C runtime architectures:
 
-### 2. The Three-Phase Pipeline Algorithm
-The implementation is decomposed into three distinct, single-responsibility phases:
+- **Stack Frames:** Local variables allocated inside `get_next_line()` are destroyed upon function return.
+- **BSS/Data Segment:** Static variables (`static char *mem_char`) reside in the program's static data segment. Their lifetime spans the entire program duration, preserving unreturned characters between consecutive function calls.
 
-1. **Accumulation (`read_fd`):**
-   - Continuously calls `read(fd, buffer, BUFFER_SIZE)` in a loop until either a newline (`\n`) is present in the accumulated string or EOF (`read() == 0`) is encountered.
-   - Appends newly read chunks using a custom `ft_strjoin` that automatically frees previous allocations to prevent memory leaks.
-2. **Extraction (`extract_str`):**
-   - Scans the accumulated string up to the first `\n` character.
-   - Allocates exact memory for the line (including `\n` and `\0`) and returns it to the caller.
-3. **Trimming & Cleanup (`clean_left_str`):**
-   - Extracts whatever characters remain after the `\n` delimiter and stores them back into the static pointer for the next call.
-   - Frees the old accumulated string. If no characters remain, it frees the pointer and sets it to `NULL` to ensure zero residual heap memory.
+```text
+Memory Layout of Stream Buffer Persistence:
+
+Call 1 Read Chunks: [ Line 1 Content \n | Leftover Content ... ]
+                          │                       │
+                          ▼                       ▼
+                   Returned to Caller      Saved in static mem_char
+
+Call 2 Begins:      Uses static mem_char as initial input before reading fd again
+```
+
+---
+
+### 2. The Three-Phase Pipeline
+
+`get_next_line` orchestrates stream processing through three distinct stages:
+
+```mermaid
+graph TD
+    Start["get_next_line(fd)"] --> Validate{"fd >= 0 && BUFFER_SIZE > 0"}
+    Validate -->|"Invalid"| RetNull["return NULL"]
+    Validate -->|"Valid"| Phase1["Phase 1: read_fd(fd, mem_char)"]
+    Phase1 --> ReadLoop{"ft_strchr(mem_char, '\\n') || EOF"}
+    ReadLoop -->|"No"| SysRead["read(fd, buffer, BUFFER_SIZE)"]
+    SysRead --> Append["mem_char = ft_strjoin(mem_char, buffer)"]
+    Append --> ReadLoop
+    ReadLoop -->|"Yes"| Phase2["Phase 2: extract_str(mem_char)"]
+    Phase2 --> Extract["Copy bytes up to and including '\\n'"]
+    Phase2 --> Phase3["Phase 3: clean_left_str(mem_char)"]
+    Phase3 --> Trim["Retain residual bytes after '\\n' in static pointer"]
+    Phase3 --> ReturnLine["return extracted line"]
+```
+
+#### Phase 1: Stream Ingestion and Accumulation (`read_fd`)
+The helper allocates a heap buffer of size `BUFFER_SIZE + 1`. It repeatedly calls `read(fd, buffer, BUFFER_SIZE)` until a newline character is located in the accumulated string or EOF (`read() == 0`) is reached. Each read chunk is appended to `mem_char` using `ft_strjoin`, which frees the previous allocation to prevent memory leaks.
+
+#### Phase 2: Line Extraction (`extract_str`)
+Once a newline is present or EOF is reached, `extract_str` computes the byte length of the line up to and including the first `\n`. It allocates exact heap memory for this line, copies the characters, appends a null terminator (`\0`), and returns the pointer to the caller.
+
+#### Phase 3: Remainder Cleanup (`clean_left_str`)
+The remaining characters situated after the newline are extracted into a newly allocated buffer and assigned back to `mem_char`. The old accumulator string is freed. If no characters remain, `mem_char` is freed and set to `NULL`, ensuring that no allocated memory lingers once a file is fully read.
+
+---
+
+### 3. Buffer Sizing and Complexity Analysis
+
+Let $L$ denote the byte length of the line being read, and let $B$ denote the compile-time `BUFFER_SIZE`.
+
+#### System Call Frequency
+The number of `read(2)` system calls $S$ required to assemble a line is given by:
+
+$$S = \left\lceil \frac{L}{B} \right\rceil$$
+
+- **Small Buffer ($B = 1$):** Exactly $L$ system calls are executed per line. While memory overhead per call is minimal, repeated kernel-to-user space context switches degrade performance.
+- **Optimal Buffer ($B \approx 4096$):** Aligns with standard operating system memory page sizes, minimizing context switches while keeping memory usage modest.
+- **Large Buffer ($B \ge 10^6$):** A single system call captures the line, but allocates a large heap buffer that remains mostly unused if lines are short.
+
+#### Complexity Summary
+
+| Dimension | Metric | Justification |
+| :--- | :---: | :--- |
+| **Time Complexity** | $\mathcal{O}(L)$ | Each byte in the returned line is read and copied a constant number of times. |
+| **Auxiliary Heap Space** | $\mathcal{O}(B + L)$ | Buffer allocation of size $B + 1$ plus accumulator growth proportional to $L$. |
+| **Static Memory Usage** | $\mathcal{O}(1)$ | Single pointer (`sizeof(char *)`) in mandatory; array of size `OPEN_MAX` in bonus. |
+
+---
+
+### 4. Memory Safety & Edge Conditions
+
+The implementation implements defensive guards against common C memory pitfalls:
+
+- **Invalid File Descriptors:** Validated at the function entry point (`fd < 0 || BUFFER_SIZE <= 0`).
+- **Read Error Recovery:** If `read()` returns `-1` (for example, if the descriptor is a directory or disconnected pipe), both the temporary chunk buffer and the persistent static string are immediately deallocated, preventing orphaned allocations.
+- **Clean EOF Teardown:** When the final line of a file lacks a trailing newline, `extract_str` returns the remaining text. The subsequent call detects an empty residual string, cleans up the static pointer to `NULL`, and returns `NULL`.
 
 ---
 
 ## Resources
 
 ### Classic References
-- **`read(2)`**: Linux Programmer's Manual (`man 2 read`).
-- **`open(2)`**: Linux Programmer's Manual (`man 2 open`).
-- **POSIX.1-2017**: Standard for Information Technology — Portable Operating System Interface.
+- **Stevens, W. Richard, and Stephen A. Rago.** *Advanced Programming in the UNIX Environment* (3rd Edition). Addison-Wesley, 2013. Chapter 3: File Descriptors, File Sharing, and I/O Efficiency.
+- **Kernighan, Brian W., and Dennis M. Ritchie.** *The C Programming Language* (2nd Edition). Section 8.2: Low Level I/O (Read and Write).
+- **Linux Programmer's Manual:** `man 2 read`, `man 2 open`.
 
 ### AI Usage
-- **Conceptual Clarification:** AI tools were used during early research to explore the mechanics of the Linux kernel open file table, file descriptor offsets, and the memory layout differences between Stack, Heap, and BSS segments.
-- **Code & Implementation:** All source code, memory allocation patterns, string utility functions, and leak prevention routines were written, debugged, and verified independently by the author to ensure 100% 42 Norminette compliance and zero Valgrind leaks.
+- **Kernel I/O Semantics:** AI tools were consulted during research to clarify POSIX file table offset behaviors across concurrent file descriptors.
+- **Code & Implementation:** Accumulation logic, buffer concatenation primitives, memory cleanup sequences, and bonus array indexing were independently written, structured, and validated by the author, and verified against `gnlTester` and `42cursus-gnl-tests` with zero leaks under Valgrind.
 
 ---
 
